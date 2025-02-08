@@ -1,17 +1,29 @@
 const userModel = require('../models/userModel')
+const bcrypt = require('bcrypt')
+
+const saltRounds = 5
 
 const loginController = async (req, res) => {
   try {
     const { email, password } = req.body
-    const user = await userModel.findOne({ email, password })
-
+    const user = await userModel.findOne({ email })
     if (!user) {
       return res.status(404).send('User not found')
     }
-    res.status(200).json({
-      success: true,
-      user,
-    })
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if(passwordMatch){
+      res.status(200).json({
+        success: true,
+        user,
+      })
+    }
+    else{
+      res.status(400).json({
+        success: false,
+        message: 'Invalid Credentials',
+      })
+    }
   } catch (error) {
     res.status(400).json({
       success: false,
@@ -22,7 +34,10 @@ const loginController = async (req, res) => {
 
 const registerController = async (req, res) => {
   try {
-    const newUser = new userModel(req.body)
+    const {name,email,password} = req.body;
+    const hashedPasswords = await bcrypt.hash(password,saltRounds);
+
+    const newUser = new userModel({name,email,password:hashedPasswords})
     await newUser.save()
     res.status(200).json({
       success: true,
